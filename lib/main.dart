@@ -83,8 +83,13 @@ class _AnaSayfaState extends State<AnaSayfa> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late final WebViewController _webController;
   List<AltinModel> altinListesi = [];
+  
+  // Filtreleme için gerekli değişkenler
+  List<String> seciliKategoriler = ["GRAM", "ÇEYREK", "YARIM", "TAM", "ATA", "HAS", "ONS", "AYAR", "GÜMÜŞ"];
+  final List<String> tumKategoriler = ["GRAM", "ÇEYREK", "YARIM", "TAM", "ATA", "HAS", "ONS", "AYAR", "GÜMÜŞ", "USD", "EUR"];
+
   double guncelGramAlis = 0.0, guncelGramSatis = 0.0;
-  String saat = "00:00:00", tarih = "Yükleniyor...", durumMetni = "BAĞLANTI BEKLENİYOR...";
+  String saat = "00:00:00", tarih = "Yükleniyor...", durumMetni = "BEKLENİYOR...";
   TextEditingController adetController = TextEditingController();
   String toplamAlis = "0.00 ₺", toplamSatis = "0.00 ₺";
   bool veriAlindi = false;
@@ -100,16 +105,12 @@ class _AnaSayfaState extends State<AnaSayfa> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (String url) {
-            // Sayfa ilk kez yüklendiğinde veriyi çek
             _htmlKaynaginiCek(); 
           },
         ),
       )
       ..loadRequest(Uri.parse('https://www.haremaltin.com'));
 
-    // --- DÜZELTİLEN KISIM ---
-    // Sayfayı 'reload' (yenile) yapmak yerine, sadece veriyi çekiyoruz.
-    // Böylece sayfa kapanıp açılmıyor, veriler sabit kalıyor.
     Timer.periodic(Duration(seconds: 2), (timer) {
       _htmlKaynaginiCek();
     });
@@ -128,12 +129,10 @@ class _AnaSayfaState extends State<AnaSayfa> {
 
   void _htmlKaynaginiCek() async {
     try {
-      // Sayfayı yenilemeden sadece HTML kodunu alıyoruz
       String htmlContent = await _webController.runJavaScriptReturningResult("document.documentElement.innerHTML") as String;
       htmlContent = htmlContent.replaceAll('\\u003C', '<').replaceAll('\\"', '"').replaceAll('\\n', '');
       verileriIsle(htmlContent);
     } catch (e) {
-      // Hata olursa konsola yaz ama kullanıcıya hissettirme
       print("HTML Alma Hatası: $e");
     }
   }
@@ -147,29 +146,45 @@ class _AnaSayfaState extends State<AnaSayfa> {
       for (var row in rows) {
         var cells = row.querySelectorAll('td');
         if (cells.length > 3) {
-          String isim = cells[0].text.trim();
-          String alis = cells[1].text.trim();
-          String satis = cells[2].text.trim();
-          String farkRaw = cells[3].text.trim();
+          String hamIsim = cells[0].text.trim();
           
-          String fark = farkRaw.split("%").last;
-          bool isDusus = farkRaw.contains("-");
-
-          if (isim.contains("GRAM ALTIN")) {
-            guncelGramAlis = double.tryParse(alis.replaceAll(".", "").replaceAll(",", ".")) ?? 0.0;
-            guncelGramSatis = double.tryParse(satis.replaceAll(".", "").replaceAll(",", ".")) ?? 0.0;
+          // --- ÇİFT İSİM TEMİZLEME MANTIĞI (Örn: YENİ ATAYENİ ATA -> YENİ ATA) ---
+          String temizIsim = hamIsim;
+          int uzunluk = hamIsim.length;
+          if (uzunluk > 4 && uzunluk % 2 == 0) {
+            String ilkYari = hamIsim.substring(0, uzunluk ~/ 2).trim();
+            String ikinciYari = hamIsim.substring(uzunluk ~/ 2).trim();
+            if (ilkYari == ikinciYari) {
+              temizIsim = ilkYari;
+            }
           }
-          yeniListe.add(AltinModel(isim: isim, alis: alis, satis: satis, fark: "%$fark", dusus: isDusus));
+
+          // FİLTRELEME MANTIĞI
+          bool gosterilsinMi = seciliKategoriler.any((kat) => temizIsim.toUpperCase().contains(kat));
+
+          if (gosterilsinMi) {
+            String alis = cells[1].text.trim();
+            String satis = cells[2].text.trim();
+            String farkRaw = cells[3].text.trim();
+            
+            String fark = farkRaw.split("%").last;
+            bool isDusus = farkRaw.contains("-");
+
+            if (temizIsim.contains("GRAM ALTIN")) {
+              guncelGramAlis = double.tryParse(alis.replaceAll(".", "").replaceAll(",", ".")) ?? 0.0;
+              guncelGramSatis = double.tryParse(satis.replaceAll(".", "").replaceAll(",", ".")) ?? 0.0;
+            }
+            yeniListe.add(AltinModel(isim: temizIsim, alis: alis, satis: satis, fark: "%$fark", dusus: isDusus));
+          }
         }
       }
 
       if (mounted && yeniListe.isNotEmpty) {
         setState(() {
           altinListesi = yeniListe;
-          durumMetni = "CANLI TAKİP AKTİF 🟢";
+          durumMetni = "CANLI 🟢";
           veriAlindi = true;
         });
-        // Hesaplama varsa güncelle
         if (adetController.text.isNotEmpty) hesapla(adetController.text);
       }
     } catch (e) {
@@ -186,8 +201,56 @@ class _AnaSayfaState extends State<AnaSayfa> {
     });
   }
 
-  // --- POPUP FONKSİYONLARI ---
+  // --- FİLTRELEME POPUP ---
+  void showFiltrePopup() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text("GÖRÜNTÜLEME AYARI", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 16, fontWeight: FontWeight.bold)),
+              content: Container(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: tumKategoriler.length,
+                  itemBuilder: (context, index) {
+                    final kat = tumKategoriler[index];
+                    return CheckboxListTile(
+                      activeColor: Color(0xFFD4AF37),
+                      title: Text(kat, style: TextStyle(fontSize: 14)),
+                      value: seciliKategoriler.contains(kat),
+                      onChanged: (bool? value) {
+                        setStateDialog(() {
+                          if (value == true) {
+                            seciliKategoriler.add(kat);
+                          } else {
+                            seciliKategoriler.remove(kat);
+                          }
+                        });
+                        setState(() {}); // Ana ekranı güncelle
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("TAMAM", style: TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.bold)),
+                )
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
+  // --- POPUP FONKSİYONLARI ---
   void showBizKimizPopup() {
     showDialog(
       context: context,
@@ -202,8 +265,7 @@ class _AnaSayfaState extends State<AnaSayfa> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  height: 200,
-                  width: double.infinity,
+                  height: 200, width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: Color(0xFFD4AF37), width: 2),
@@ -246,7 +308,6 @@ class _AnaSayfaState extends State<AnaSayfa> {
   void showZekatPopup() {
     double zekatSonuc = 0.0;
     TextEditingController zekatController = TextEditingController();
-
     showDialog(
       context: context,
       builder: (context) {
@@ -334,25 +395,50 @@ class _AnaSayfaState extends State<AnaSayfa> {
             children: [
               ustPanel(),
               ceviriciKart(),
+              // BUTON VE FİLTRE SATIRI (Daraltılmış ve ikon eklenmiş hali)
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: veriAlindi ? Colors.green : Color(0xFF333333)),
-                    onPressed: () { 
-                        // Manuel yenileme gerekirse diye reload'u sadece butona koyduk
-                        _webController.reload(); 
-                    },
-                    child: Text(durumMetni, style: TextStyle(color: Colors.white)),
-                  ),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: Container(
+                        height: 40,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: veriAlindi ? Colors.green : Color(0xFF333333),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
+                          ),
+                          onPressed: () => _webController.reload(),
+                          child: Text(durumMetni, style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        height: 40,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFFD4AF37),
+                            elevation: 2,
+                            padding: EdgeInsets.zero,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
+                          ),
+                          onPressed: showFiltrePopup,
+                          child: Icon(Icons.filter_list, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               baslikSatiri(),
               Expanded(child: altinListView()),
             ],
           ),
-          
           SizedBox(
             height: 1, 
             width: 1,
@@ -434,10 +520,12 @@ class _AnaSayfaState extends State<AnaSayfa> {
   Widget altinListView() {
     return ListView.builder(
       itemCount: altinListesi.length,
+      padding: EdgeInsets.zero,
       itemBuilder: (context, index) {
         final item = altinListesi[index];
         return Card(
           margin: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Padding(
             padding: EdgeInsets.all(14),
             child: Row(children: [
