@@ -2,6 +2,7 @@ name: kardesler_kuyumculuk
 description: "Kardeşler Kuyumculuk Canlı Altın Takip Uygulaması"
 publish_to: 'none'
 version: 1.0.0+1
+
 environment:
   sdk: ^3.11.0
 
@@ -16,15 +17,26 @@ dependencies:
   intl: ^0.18.1
   url_launcher: ^6.2.1
   google_fonts: ^6.1.0
-  webview_flutter: ^4.7.0  # <-- BU ÇOK ÖNEMLİ, YENİ EKLEDİK!
+  webview_flutter: ^4.7.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # İkon oluşturucu paket buraya eklendi
+  flutter_launcher_icons: "^0.13.1"
+
+# İkon yapılandırma ayarları
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon.jpg"
+  adaptive_icon_background: "#1A1A1A"
 
 flutter:
   uses-material-design: true
   assets:
     - assets/dukkan.jpg
     - assets/splash.jpg
+    # İkon dosyasını da assets altına eklemeyi unutma
+    - assets/icon.jpg
