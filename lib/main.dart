@@ -41,9 +41,9 @@ class _SplashEkraniState extends State<SplashEkrani> with SingleTickerProviderSt
     );
 
     // Soldan (-1.5) merkeze (0.0) geliş
-    _offsetAnimation = Tween<Offset>(
-      begin: const Offset(-1.5, 0.0),
-      end: Offset.center,
+ _offsetAnimation = Tween<Offset>(
+      begin: const Offset(-1.5, 0.0), // Ekranın dışından soldan başla
+      end: Offset.zero,               // Tam ortada (kendi yerinde) dur
     ).animate(CurvedAnimation(
       parent: _controller,
       curve: Curves.easeOutCubic,
