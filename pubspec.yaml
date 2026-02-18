@@ -26,12 +26,15 @@ dev_dependencies:
   # İkon oluşturucu paket buraya eklendi
   flutter_launcher_icons: "^0.13.1"
 
-# İkon yapılandırma ayarları
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/icon.jpg"
-  adaptive_icon_background: "#1A1A1A"
+  # İkonu tam sığdırmak için ölçeği ayarla (Bunu deneme yanılma ile 1.0 yapalım)
+  image_scale: 1.0 
+  # Arka plan rengini ikonun rengine yaklaştır (Lacivert/Siyah tonuysa onu seç)
+  adaptive_icon_background: "#001B3D" 
+  remove_alpha_ios: true # iOS'ta şeffaflık sorunlarını engeller
 
 flutter:
   uses-material-design: true
