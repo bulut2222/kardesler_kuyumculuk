@@ -26,13 +26,40 @@ class SplashEkrani extends StatefulWidget {
   _SplashEkraniState createState() => _SplashEkraniState();
 }
 
-class _SplashEkraniState extends State<SplashEkrani> {
+class _SplashEkraniState extends State<SplashEkrani> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _offsetAnimation;
+
   @override
   void initState() {
     super.initState();
-    Timer(Duration(seconds: 3), () {
+    
+    // Animasyon süresi (2 saniye yavaş geliş)
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+
+    // Soldan (-1.5) merkeze (0.0) geliş
+    _offsetAnimation = Tween<Offset>(
+      begin: const Offset(-1.5, 0.0),
+      end: Offset.center,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _controller.forward();
+
+    Timer(Duration(seconds: 4), () {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AnaSayfa()));
     });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -56,10 +83,29 @@ class _SplashEkraniState extends State<SplashEkrani> {
                   child: ClipOval(child: Image.asset("assets/splash.jpg", fit: BoxFit.cover,
                       errorBuilder: (c, o, s) => Icon(Icons.diamond, size: 60, color: Colors.white))),
                 ),
-                SizedBox(height: 20),
-                Text("KARDEŞLER", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                Text("KUYUMCULUK", style: TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 5)),
+                SizedBox(height: 30),
+                // Yazıların soldan sağa akması için SlideTransition
+                SlideTransition(
+                  position: _offsetAnimation,
+                  child: Column(
+                    children: [
+                      Text("KARDEŞLER", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                      Text("KUYUMCULUK", style: TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 5)),
+                    ],
+                  ),
+                ),
               ],
+            ),
+          ),
+          // En alttaki gri küçük yazı
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            child: Text(
+              "Güven ve Kalitenin Adresi",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 12, letterSpacing: 1.2),
             ),
           ),
         ],
