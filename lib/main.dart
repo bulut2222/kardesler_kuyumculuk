@@ -226,6 +226,7 @@ class _AnaSayfaState extends State<AnaSayfa> {
   }
 
   // --- MERKEZİ MOTOR (VERİ AYIKLAMA, TEMİZLEME VE GİZLİ YÜZDE HESAPLAMA) ---
+  // --- MERKEZİ MOTOR (VERİ AYIKLAMA, TEMİZLEME VE GİZLİ YÜZDE HESAPLAMA) ---
   void _verileriAyikla(String html) {
     if (html.isEmpty) return;
     var document = parse(html);
@@ -234,22 +235,22 @@ class _AnaSayfaState extends State<AnaSayfa> {
     String bugunTarih = DateFormat("yyyy-MM-dd HH:mm:ss", "tr_TR").format(DateTime.now());
 
     for (var satir in satirlar) {
+      // Harem altın bazen farklı class'lar (örneğin kolonlar için td yerine th veya div) kullanabilir.
+      // Sadece içinde class='text-right' (sayı içeren) olan satırları dikkate alacağız:
       var hucreler = satir.querySelectorAll("td");
-      if (hucreler.length > 3) {
+      
+      // Sütun sayısı en az 4 olmalı (İsim, Alış, Satış, Fark/Yön)
+      if (hucreler.length >= 4) {
         
-        // 1. KUSURSUZ İSİM TEMİZLİĞİ (Görsellerdeki \n, \N ve tekrarları yok eder)
+        // 1. İSİM HÜCRESİ KORUMASI
         String hamIsim = hucreler[0].text.toUpperCase();
-        // Literal \n, \N, ters slash ve normal boşlukları söküp atıyoruz:
         hamIsim = hamIsim.replaceAll(r'\N', '').replaceAll(r'\n', '').replaceAll(r'\', '').replaceAll(RegExp(r'[\n\r\t]'), '');
-        hamIsim = hamIsim.replaceAll(RegExp(r'\s+'), ' ').trim(); // Fazla boşlukları tek boşluğa indir
+        hamIsim = hamIsim.replaceAll(RegExp(r'\s+'), ' ').trim();
         
-        // İsim İkilemesini Önleme (HAS ALTINHAS ALTIN -> HAS ALTIN)
         if (hamIsim.isNotEmpty && hamIsim.length % 2 == 0) {
           int yari = hamIsim.length ~/ 2;
           if (hamIsim.substring(0, yari) == hamIsim.substring(yari)) hamIsim = hamIsim.substring(0, yari);
         }
-        
-        // Boşluklu İkilemeyi Önleme (GRAM ALTIN GRAM ALTIN -> GRAM ALTIN)
         List<String> kelimeler = hamIsim.split(" ");
         if (kelimeler.length >= 2 && kelimeler.length % 2 == 0) {
           int yari = kelimeler.length ~/ 2;
@@ -257,25 +258,30 @@ class _AnaSayfaState extends State<AnaSayfa> {
             hamIsim = kelimeler.sublist(0, yari).join(" ");
           }
         }
-        hamIsim = hamIsim.trim(); // Tertemiz "HAS ALTIN" elde edildi.
+        hamIsim = hamIsim.trim();
 
-        // 2. RAKAMLARI AL
-        String hamAlisTxt = hucreler[1].text.replaceAll(RegExp(r'[\n\r\t]'), '').trim();
-        String hamSatisTxt = hucreler[2].text.replaceAll(RegExp(r'[\n\r\t]'), '').trim();
-        String farkOrani = hucreler[3].text.replaceAll(RegExp(r'[\n\r\t]'), '').trim();
+        // 2. RAKAMLARI AL VE TEMİZLE (İşte Sorunun Çözüldüğü Yer)
+        // Her bir hücreyi ayrı ayrı okuyup, içlerindeki gereksiz boşluk ve satır atlamalarını yok ediyoruz.
+        // Bu sayede alış ve satış fiyatları asla birbirine yapışmaz.
+        String hamAlisTxt = hucreler[1].text.replaceAll(RegExp(r'[\n\r\t]'), '').replaceAll(' ', '').trim();
+        String hamSatisTxt = hucreler[2].text.replaceAll(RegExp(r'[\n\r\t]'), '').replaceAll(' ', '').trim();
+        String farkOrani = hucreler[3].text.replaceAll(RegExp(r'[\n\r\t]'), '').replaceAll(' ', '').trim();
+
+        // Eğer hücrelerden biri tamamen boşsa o satırı atla (hatayı önler)
+        if(hamAlisTxt.isEmpty || hamSatisTxt.isEmpty) continue;
 
         double hamAlis = double.tryParse(hamAlisTxt.replaceAll(".", "").replaceAll(",", ".")) ?? 0.0;
         double hamSatis = double.tryParse(hamSatisTxt.replaceAll(".", "").replaceAll(",", ".")) ?? 0.0;
 
-        // 3. GİZLİ PANEL YÜZDE MÜDAHALESİ (Anında Etki Eder)
+        // 3. GİZLİ PANEL YÜZDE MÜDAHALESİ
         double manipuleYuzdesi = manipuleOranlari[hamIsim] ?? 0.0;
         if (manipuleYuzdesi != 0.0) {
-          // Örn: hamAlis 5000, Yüzde 100 ise -> 5000 + (5000 * 100/100) = 10000.
           hamAlis = hamAlis + (hamAlis * (manipuleYuzdesi / 100));
           hamSatis = hamSatis + (hamSatis * (manipuleYuzdesi / 100));
         }
 
-        // 4. EKRAN FORMATINA ÇEVİR
+        // 4. EKRAN FORMATINA ÇEVİR (Para Birimi Formatı)
+        // Burada formatlarken sadece Türk Lirası sistemine göre virgülleri koyuyoruz.
         String sonAlis = NumberFormat.currency(locale: 'tr_TR', symbol: '').format(hamAlis).trim();
         String sonSatis = NumberFormat.currency(locale: 'tr_TR', symbol: '').format(hamSatis).trim();
         bool isDusus = farkOrani.contains("-");
