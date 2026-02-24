@@ -8,18 +8,38 @@ import 'dart:async';
 import 'dart:developer' as dev;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:html/parser.dart' show parse;
+import 'dart:io' show Platform; // İŞTE iOS'U KURTARACAK SİHİRLİ SATIR BURASI
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: "AIzaSyDiF13eBZ_my6FAsSYmPsGJSJxFaK6U-SM",
-      appId: "1:626207190484:android:f612d2f0dd2176691d3a41",
-      messagingSenderId: "626207190484",
-      projectId: "kardeslerkuyumcusu-f8428",
-      databaseURL: "https://kardeslerkuyumcusu-f8428-default-rtdb.firebaseio.com",
-    ),
-  );
+  
+  // EĞER CİHAZ iOS İSE BU BİLGİLERLE BAĞLAN:
+  if (Platform.isIOS) {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyDVBpdZuaEsOBC6W4vFRGUyi8LZb2JgJH8",
+        appId: "1:626207190484:ios:d57cba98a6a9a8ce1d3a41",
+        messagingSenderId: "626207190484",
+        projectId: "kardeslerkuyumcusu-f8428",
+        databaseURL: "https://kardeslerkuyumcusu-f8428-default-rtdb.firebaseio.com",
+        storageBucket: "kardeslerkuyumcusu-f8428.firebasestorage.app",
+        iosBundleId: "com.yourname.kardeslerkuyumcusu",
+      ),
+    );
+  } 
+  // EĞER CİHAZ ANDROID İSE SENİN ESKİ BİLGİLERİNLE BAĞLAN:
+  else {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyDiF13eBZ_my6FAsSYmPsGJSJxFaK6U-SM",
+        appId: "1:626207190484:android:f612d2f0dd2176691d3a41",
+        messagingSenderId: "626207190484",
+        projectId: "kardeslerkuyumcusu-f8428",
+        databaseURL: "https://kardeslerkuyumcusu-f8428-default-rtdb.firebaseio.com",
+      ),
+    );
+  }
+
   await initializeDateFormatting('tr_TR', null);
   runApp(const KardeslerApp());
 }
@@ -560,7 +580,7 @@ class _AnaSayfaState extends State<AnaSayfa> {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.3)),
           ),
-          child: Text(
+          child: Text( 
             tarih.toUpperCase(), 
             style: const TextStyle(
               color: Color(0xFFD4AF37), 
