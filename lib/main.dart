@@ -477,7 +477,7 @@ class _AnaSayfaState extends State<AnaSayfa> {
           ],
         ),
       ),
-      Expanded(child: ListView.builder(itemCount: altinListesi.length, padding: const EdgeInsets.symmetric(horizontal: 15), itemBuilder: (context, index) {
+     Expanded(child: ListView.builder(itemCount: altinListesi.length, padding: const EdgeInsets.symmetric(horizontal: 15), itemBuilder: (context, index) {
         final item = altinListesi[index];
         
         // --- \n GİBİ ÇÖP KARAKTERLERİ YOK EDEN FİLTRE ---
@@ -488,10 +488,23 @@ class _AnaSayfaState extends State<AnaSayfa> {
           border: Border.all(color: item.dusus ? Colors.red.withOpacity(0.3) : Colors.green.withOpacity(0.3), width: 1),
           boxShadow: [BoxShadow(color: item.dusus ? Colors.red.withOpacity(0.05) : Colors.green.withOpacity(0.05), blurRadius: 10)],
         ), child: Row(children: [
-          Expanded(flex: 2, child: Text(item.isim, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13))),
-          Expanded(child: Text(item.alis, textAlign: TextAlign.center, style: TextStyle(color: item.dusus ? Colors.red : Colors.green, fontSize: 13, fontWeight: FontWeight.bold))),
-          Expanded(child: Text(item.satis, textAlign: TextAlign.right, style: TextStyle(color: item.dusus ? Colors.red : Colors.green, fontWeight: FontWeight.w900, fontSize: 14))),
+          // İSİM KISMI
+          Expanded(flex: 2, child: Text(item.isim, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13))),
+          
+          // ALIŞ KISMI (FittedBox ile tek satıra zorlandı)
+          Expanded(child: FittedBox(
+            fit: BoxFit.scaleDown, alignment: Alignment.center,
+            child: Text(item.alis, maxLines: 1, style: TextStyle(color: item.dusus ? Colors.red : Colors.green, fontSize: 13, fontWeight: FontWeight.bold)),
+          )),
+          
+          // SATIŞ KISMI (FittedBox ile tek satıra zorlandı)
+          Expanded(child: FittedBox(
+            fit: BoxFit.scaleDown, alignment: Alignment.centerRight,
+            child: Text(item.satis, maxLines: 1, style: TextStyle(color: item.dusus ? Colors.red : Colors.green, fontWeight: FontWeight.w900, fontSize: 14)),
+          )),
+          
           const SizedBox(width: 15),
+          
           // YÜZDELİK FARK VE İKON KISMI
           SizedBox(
             width: 50,
@@ -499,7 +512,11 @@ class _AnaSayfaState extends State<AnaSayfa> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(temizFark, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: item.dusus ? Colors.red : Colors.green)),
+                // FARK YAZISI (FittedBox ile tek satıra zorlandı)
+                FittedBox(
+                  fit: BoxFit.scaleDown, alignment: Alignment.centerRight,
+                  child: Text(temizFark, maxLines: 1, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: item.dusus ? Colors.red : Colors.green)),
+                ),
                 const SizedBox(height: 2),
                 Icon(item.dusus ? Icons.trending_down : Icons.trending_up, color: item.dusus ? Colors.red : Colors.green, size: 14),
               ],
@@ -535,19 +552,27 @@ class _AnaSayfaState extends State<AnaSayfa> {
         ]
       ),
       child: Column(children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           IconButton(icon: Icon(Icons.notes_rounded, color: isDark ? Colors.white : Colors.black, size: 28), onPressed: () => _scaffoldKey.currentState?.openDrawer()),
           
-          // 4. LÜKS MARKA YAZISI (Geniş Harf Aralığı ve Hafif Işıltı)
-          Text(
-            "KARDEŞLER KUYUMCULUK", 
-            style: TextStyle(
-              fontWeight: FontWeight.w900, 
-              fontSize: 15, 
-              letterSpacing: 3.5, // Daha lüks bir görünüm için harf arası açıldı
-              color: isDark ? Colors.white : const Color(0xFF111115),
-              shadows: [Shadow(color: const Color(0xFFD4AF37).withOpacity(0.5), blurRadius: 15)] // Altın Parlaması
-            )
+          // 4. LÜKS MARKA YAZISI (Ekrana sığması için Expanded ve FittedBox eklendi)
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5), // Butonlarla arasına nefes payı
+              child: FittedBox(
+                fit: BoxFit.scaleDown, // Ekrana sığmazsa sadece yazıyı küçült, butonları itme
+                child: Text(
+                  "KARDEŞLER KUYUMCULUK", 
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900, 
+                    fontSize: 15, 
+                    letterSpacing: 3.5, 
+                    color: isDark ? Colors.white : const Color(0xFF111115),
+                    shadows: [Shadow(color: const Color(0xFFD4AF37).withOpacity(0.5), blurRadius: 15)]
+                  )
+                ),
+              ),
+            ),
           ),
           
           IconButton(icon: Icon(isDark ? Icons.wb_sunny_outlined : Icons.nightlight_round, color: const Color(0xFFD4AF37)), onPressed: widget.toggleTheme),
@@ -599,9 +624,16 @@ class _AnaSayfaState extends State<AnaSayfa> {
       Container(height: 220, width: double.infinity, padding: const EdgeInsets.all(15), decoration: const BoxDecoration(color: Color(0xFF0A0A0D)), child: ClipRRect(borderRadius: BorderRadius.circular(15), child: Image.asset("assets/dukkan.jpg", fit: BoxFit.cover, errorBuilder: (c, o, s) => const Center(child: Icon(Icons.diamond, color: Color(0xFFD4AF37), size: 60))))),
       _menuLink("HIZLI GRAM HESAPLA", Icons.calculate_outlined, () { Navigator.pop(context); showGramHesaplaPopup(); }, gold: true),
       _menuLink("BİZ KİMİZ?", Icons.info_outline, () { Navigator.pop(context); showBizKimizPopup(); }),
-      _menuLink("DÜKKAN KONUMU", Icons.location_on_outlined, () => _launchURL("geo:0,0?q=Kardeşler+Kuyumculuk+Ereğli")),
+      
+      // 1. DÜKKAN KONUMU GÜNCELLENDİ (Senin verdiğin link eklendi)
+      _menuLink("DÜKKAN KONUMU", Icons.location_on_outlined, () => _launchURL("https://maps.app.goo.gl/inxftocvFwagY2HMA")),
+      
+      // 2. İŞ YERİ TELEFONU GÜNCELLENDİ (Uluslararası arama formatı: tel:+90...)
       _menuLink("İŞ YERİ TELEFONU", Icons.phone_in_talk_outlined, () => _launchURL("tel:+903723238888")),
-      _menuLink("WHATSAPP DESTEK", Icons.chat_bubble_outline, () => _launchURL("https://wa.me/905000000000")),
+      
+      // 3. WHATSAPP DESTEK GÜNCELLENDİ (WhatsApp API formatı: wa.me/90...)
+      _menuLink("WHATSAPP DESTEK", Icons.chat_bubble_outline, () => _launchURL("https://wa.me/903723238888")),
+      
       _menuLink("ZEKAT HESAPLA", Icons.monetization_on_outlined, () { Navigator.pop(context); showZekatPopup(); }),
       const Spacer(),
       Padding(padding: const EdgeInsets.all(20), child: Text("v7.0 Ultimate Premium", style: TextStyle(color: isDark ? Colors.white10 : Colors.black12, fontSize: 10))),
