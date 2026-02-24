@@ -226,7 +226,6 @@ class _AnaSayfaState extends State<AnaSayfa> {
   }
 
   // --- MERKEZİ MOTOR (VERİ AYIKLAMA, TEMİZLEME VE GİZLİ YÜZDE HESAPLAMA) ---
-  // --- MERKEZİ MOTOR (VERİ AYIKLAMA, TEMİZLEME VE GİZLİ YÜZDE HESAPLAMA) ---
   void _verileriAyikla(String html) {
     if (html.isEmpty) return;
     var document = parse(html);
@@ -235,14 +234,10 @@ class _AnaSayfaState extends State<AnaSayfa> {
     String bugunTarih = DateFormat("yyyy-MM-dd HH:mm:ss", "tr_TR").format(DateTime.now());
 
     for (var satir in satirlar) {
-      // Harem altın bazen farklı class'lar (örneğin kolonlar için td yerine th veya div) kullanabilir.
-      // Sadece içinde class='text-right' (sayı içeren) olan satırları dikkate alacağız:
       var hucreler = satir.querySelectorAll("td");
-      
-      // Sütun sayısı en az 4 olmalı (İsim, Alış, Satış, Fark/Yön)
       if (hucreler.length >= 4) {
         
-        // 1. İSİM HÜCRESİ KORUMASI
+        // 1. KUSURSUZ İSİM TEMİZLİĞİ
         String hamIsim = hucreler[0].text.toUpperCase();
         hamIsim = hamIsim.replaceAll(r'\N', '').replaceAll(r'\n', '').replaceAll(r'\', '').replaceAll(RegExp(r'[\n\r\t]'), '');
         hamIsim = hamIsim.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -260,14 +255,11 @@ class _AnaSayfaState extends State<AnaSayfa> {
         }
         hamIsim = hamIsim.trim();
 
-        // 2. RAKAMLARI AL VE TEMİZLE (İşte Sorunun Çözüldüğü Yer)
-        // Her bir hücreyi ayrı ayrı okuyup, içlerindeki gereksiz boşluk ve satır atlamalarını yok ediyoruz.
-        // Bu sayede alış ve satış fiyatları asla birbirine yapışmaz.
+        // 2. RAKAMLARI AL
         String hamAlisTxt = hucreler[1].text.replaceAll(RegExp(r'[\n\r\t]'), '').replaceAll(' ', '').trim();
         String hamSatisTxt = hucreler[2].text.replaceAll(RegExp(r'[\n\r\t]'), '').replaceAll(' ', '').trim();
         String farkOrani = hucreler[3].text.replaceAll(RegExp(r'[\n\r\t]'), '').replaceAll(' ', '').trim();
 
-        // Eğer hücrelerden biri tamamen boşsa o satırı atla (hatayı önler)
         if(hamAlisTxt.isEmpty || hamSatisTxt.isEmpty) continue;
 
         double hamAlis = double.tryParse(hamAlisTxt.replaceAll(".", "").replaceAll(",", ".")) ?? 0.0;
@@ -280,10 +272,14 @@ class _AnaSayfaState extends State<AnaSayfa> {
           hamSatis = hamSatis + (hamSatis * (manipuleYuzdesi / 100));
         }
 
-        // 4. EKRAN FORMATINA ÇEVİR (Para Birimi Formatı)
-        // Burada formatlarken sadece Türk Lirası sistemine göre virgülleri koyuyoruz.
+        // 4. EKRAN FORMATINA ÇEVİR 
         String sonAlis = NumberFormat.currency(locale: 'tr_TR', symbol: '').format(hamAlis).trim();
         String sonSatis = NumberFormat.currency(locale: 'tr_TR', symbol: '').format(hamSatis).trim();
+        
+        // İŞTE SENİN İSTEDİĞİN KURAL: Küsürat tam ,00 ise sondaki 3 karakteri (,00) sil.
+        if (sonAlis.endsWith(",00")) sonAlis = sonAlis.substring(0, sonAlis.length - 3);
+        if (sonSatis.endsWith(",00")) sonSatis = sonSatis.substring(0, sonSatis.length - 3);
+
         bool isDusus = farkOrani.contains("-");
 
         // FİREBASE KAYIT
@@ -294,7 +290,6 @@ class _AnaSayfaState extends State<AnaSayfa> {
         // ÇEVİRİCİ İÇİN KÜRESEL DEĞİŞKENLERİ GÜNCELLE
         if (hamIsim == "GRAM ALTIN") { guncelGramAlis = hamAlis; guncelGramSatis = hamSatis; }
 
-        // FİLTREYE UYUYORSA LİSTEYE EKLE
         if (seciliKategoriler.contains(hamIsim)) {
           yeniListe.add(AltinModel(isim: hamIsim, alis: sonAlis, satis: sonSatis, fark: farkOrani, dusus: isDusus));
         }
@@ -302,7 +297,6 @@ class _AnaSayfaState extends State<AnaSayfa> {
     }
     if (mounted && yeniListe.isNotEmpty) setState(() => altinListesi = yeniListe);
   }
-
   @override
   void dispose() {
     _veriCekmeTimer?.cancel();
@@ -470,20 +464,23 @@ class _AnaSayfaState extends State<AnaSayfa> {
         IconButton(icon: const Icon(Icons.filter_list, color: Color(0xFFD4AF37), size: 22), onPressed: showFiltrePopup),
         GestureDetector(onTap: () { setState(() => durumMetni = "YENİLENİYOR..."); _webViewController.reload(); }, child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.green)), child: Text(durumMetni, style: const TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)))),
       ])),
-      // --- LİSTE BAŞLIKLARI ---
+     // --- LİSTE BAŞLIKLARI ---
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 5),
         child: Row(
           children: [
             Expanded(flex: 2, child: Text("CİNSİ", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isDark ? Colors.white54 : Colors.black54))),
             Expanded(child: Text("ALIŞ", textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isDark ? Colors.white54 : Colors.black54))),
+            
+            const SizedBox(width: 12), // BAŞLIKLARI DA ALTTAKİ SÜTUNLARLA HİZALADIK
+            
             Expanded(child: Text("SATIŞ", textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isDark ? Colors.white54 : Colors.black54))),
             const SizedBox(width: 25),
             SizedBox(width: 50, child: Text("FARK", textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isDark ? Colors.white54 : Colors.black54))),
           ],
         ),
       ),
-     Expanded(child: ListView.builder(itemCount: altinListesi.length, padding: const EdgeInsets.symmetric(horizontal: 15), itemBuilder: (context, index) {
+      Expanded(child: ListView.builder(itemCount: altinListesi.length, padding: const EdgeInsets.symmetric(horizontal: 15), itemBuilder: (context, index) {
         final item = altinListesi[index];
         
         // --- \n GİBİ ÇÖP KARAKTERLERİ YOK EDEN FİLTRE ---
@@ -497,13 +494,16 @@ class _AnaSayfaState extends State<AnaSayfa> {
           // İSİM KISMI
           Expanded(flex: 2, child: Text(item.isim, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13))),
           
-          // ALIŞ KISMI (FittedBox ile tek satıra zorlandı)
+          // ALIŞ KISMI 
           Expanded(child: FittedBox(
             fit: BoxFit.scaleDown, alignment: Alignment.center,
             child: Text(item.alis, maxLines: 1, style: TextStyle(color: item.dusus ? Colors.red : Colors.green, fontSize: 13, fontWeight: FontWeight.bold)),
           )),
           
-          // SATIŞ KISMI (FittedBox ile tek satıra zorlandı)
+          // İŞTE SENİ KURTARACAK FİZİKSEL DUVAR (ALIŞ VE SATIŞ ASLA YAPIŞAMAYACAK)
+          const SizedBox(width: 12), 
+          
+          // SATIŞ KISMI 
           Expanded(child: FittedBox(
             fit: BoxFit.scaleDown, alignment: Alignment.centerRight,
             child: Text(item.satis, maxLines: 1, style: TextStyle(color: item.dusus ? Colors.red : Colors.green, fontWeight: FontWeight.w900, fontSize: 14)),
@@ -518,7 +518,6 @@ class _AnaSayfaState extends State<AnaSayfa> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // FARK YAZISI (FittedBox ile tek satıra zorlandı)
                 FittedBox(
                   fit: BoxFit.scaleDown, alignment: Alignment.centerRight,
                   child: Text(temizFark, maxLines: 1, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: item.dusus ? Colors.red : Colors.green)),
