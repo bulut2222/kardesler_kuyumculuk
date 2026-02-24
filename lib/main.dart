@@ -1,29 +1,68 @@
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:html/parser.dart' show parse;
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
+import 'dart:developer' as dev;
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:html/parser.dart' show parse;
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  initializeDateFormatting('tr_TR', null).then((_) {
-    runApp(MaterialApp(
+  await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: "AIzaSyDiF13eBZ_my6FAsSYmPsGJSJxFaK6U-SM",
+      appId: "1:626207190484:android:f612d2f0dd2176691d3a41",
+      messagingSenderId: "626207190484",
+      projectId: "kardeslerkuyumcusu-f8428",
+      databaseURL: "https://kardeslerkuyumcusu-f8428-default-rtdb.firebaseio.com",
+    ),
+  );
+  await initializeDateFormatting('tr_TR', null);
+  runApp(const KardeslerApp());
+}
+
+// --- TEMA YÖNETİMİ ---
+class KardeslerApp extends StatefulWidget {
+  const KardeslerApp({super.key});
+  @override
+  State<KardeslerApp> createState() => _KardeslerAppState();
+}
+
+class _KardeslerAppState extends State<KardeslerApp> {
+  ThemeMode _themeMode = ThemeMode.dark;
+  void toggleTheme() => setState(() => _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
+      themeMode: _themeMode,
       theme: ThemeData(
-        primarySwatch: Colors.amber,
-        fontFamily: 'sans-serif',
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF7F8FA),
+        primaryColor: const Color(0xFFD4AF37),
+        cardColor: Colors.white,
       ),
-      home: SplashEkrani(),
-    ));
-  });
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF020203),
+        primaryColor: const Color(0xFFD4AF37),
+        cardColor: const Color(0xFF0A0A0D),
+      ),
+      home: SplashEkrani(onThemeToggle: toggleTheme),
+    );
+  }
 }
 
 // --- SPLASH EKRANI ---
 class SplashEkrani extends StatefulWidget {
+  final VoidCallback onThemeToggle;
+  const SplashEkrani({super.key, required this.onThemeToggle});
   @override
-  _SplashEkraniState createState() => _SplashEkraniState();
+  State<SplashEkrani> createState() => _SplashEkraniState();
 }
 
 class _SplashEkraniState extends State<SplashEkrani> with SingleTickerProviderStateMixin {
@@ -33,79 +72,35 @@ class _SplashEkraniState extends State<SplashEkrani> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    
-    // Animasyon süresi (2 saniye yavaş geliş)
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    );
-
-    // Soldan (-1.5) merkeze (0.0) geliş
- _offsetAnimation = Tween<Offset>(
-      begin: const Offset(-1.5, 0.0), // Ekranın dışından soldan başla
-      end: Offset.zero,               // Tam ortada (kendi yerinde) dur
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    ));
-
+    _controller = AnimationController(duration: const Duration(milliseconds: 1500), vsync: this);
+    _offsetAnimation = Tween<Offset>(begin: const Offset(-1.5, 0.0), end: Offset.zero).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _controller.forward();
-
-    Timer(Duration(seconds: 4), () {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AnaSayfa()));
+    Timer(const Duration(seconds: 4), () {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AnaSayfa(toggleTheme: widget.onThemeToggle)));
     });
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  void dispose() { _controller.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF1A1A1A),
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
-          Opacity(
-            opacity: 0.2,
-            child: Image.asset("assets/splash.jpg", fit: BoxFit.cover, width: double.infinity, height: double.infinity,
-                errorBuilder: (c, o, s) => Container(color: Colors.black)),
-          ),
+          Opacity(opacity: 0.2, child: Image.asset("assets/splash.jpg", fit: BoxFit.cover, width: double.infinity, height: double.infinity, errorBuilder: (c, o, s) => Container(color: Colors.black))),
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 120, height: 120,
-                  decoration: BoxDecoration(color: Color(0xFFD4AF37), shape: BoxShape.circle),
-                  child: ClipOval(child: Image.asset("assets/splash.jpg", fit: BoxFit.cover,
-                      errorBuilder: (c, o, s) => Icon(Icons.diamond, size: 60, color: Colors.white))),
-                ),
-                SizedBox(height: 30),
-                // Yazıların soldan sağa akması için SlideTransition
-                SlideTransition(
-                  position: _offsetAnimation,
-                  child: Column(
-                    children: [
-                      Text("KARDEŞLER", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                      Text("KUYUMCULUK", style: TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 5)),
-                    ],
-                  ),
-                ),
+                Container(width: 120, height: 120, decoration: const BoxDecoration(color: Color(0xFFD4AF37), shape: BoxShape.circle), child: ClipOval(child: Image.asset("assets/splash.jpg", fit: BoxFit.cover, errorBuilder: (c, o, s) => const Icon(Icons.diamond, size: 60, color: Colors.white)))),
+                const SizedBox(height: 30),
+                SlideTransition(position: _offsetAnimation, child: const Column(children: [
+                  Text("KARDEŞLER", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                  Text("KUYUMCULUK", style: TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 5)),
+                ])),
               ],
-            ),
-          ),
-          // En alttaki gri küçük yazı
-          Positioned(
-            bottom: 40,
-            left: 0,
-            right: 0,
-            child: Text(
-              "Güven ve Kalitenin Adresi",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 12, letterSpacing: 1.2),
             ),
           ),
         ],
@@ -121,525 +116,479 @@ class AltinModel {
 }
 
 class AnaSayfa extends StatefulWidget {
+  final VoidCallback toggleTheme;
+  const AnaSayfa({super.key, required this.toggleTheme});
   @override
-  _AnaSayfaState createState() => _AnaSayfaState();
+  State<AnaSayfa> createState() => _AnaSayfaState();
 }
 
 class _AnaSayfaState extends State<AnaSayfa> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  late final WebViewController _webController;
-  List<AltinModel> altinListesi = [];
+  final DatabaseReference _dbGecmis = FirebaseDatabase.instance.ref().child('AltinGecmisi');
+  final DatabaseReference _dbCanli = FirebaseDatabase.instance.ref().child('AltinGecmisi_Canli').child('veriler');
   
-  // Filtreleme için gerekli değişkenler
-  List<String> seciliKategoriler = ["GRAM", "ÇEYREK", "YARIM", "TAM", "ATA", "HAS", "ONS", "AYAR", "GÜMÜŞ"];
-  final List<String> tumKategoriler = ["GRAM", "ÇEYREK", "YARIM", "TAM", "ATA", "HAS", "ONS", "AYAR", "GÜMÜŞ", "USD", "EUR"];
-
+  late final WebViewController _webViewController;
+  Timer? _veriCekmeTimer;
+  Timer? _tickerTimer;
+  final ScrollController _scrollController = ScrollController();
+  
+  List<AltinModel> altinListesi = [];
+  List<String> seciliKategoriler = [];
+  
+  // GİZLİ MÜDAHALE MAP'İ VE SON HTML HAFIZASI
+  final Map<String, double> manipuleOranlari = {}; 
+  String _sonCekilenHtml = ""; 
+  
+  final List<String> tumKategoriler = [
+    "HAS ALTIN", "ONS", "USD/KG", "EUR/KG", "22 AYAR", "GRAM ALTIN", "ALTIN GÜMÜŞ", 
+    "YENİ ÇEYREK", "ESKİ ÇEYREK", "YENİ YARIM", "ESKİ YARIM", "YENİ TAM", "ESKİ TAM", 
+    "YENİ ATA", "ESKİ ATA", "YENİ ATA5", "ESKİ ATA5", "YENİ GREMSE", "ESKİ GREMSE", 
+    "14 AYAR", "GÜMÜŞ TL", "GÜMÜŞ ONS", "GÜMÜŞ USD", "PLATİN ONS", "PALADYUM ONS", 
+    "PLATİN/USD", "PALADYUM/USD", "USD/TRY", "EUR/TRY", "GBP/TRY"
+  ];
+  
   double guncelGramAlis = 0.0, guncelGramSatis = 0.0;
-  String saat = "00:00:00", tarih = "Yükleniyor...", durumMetni = "BEKLENİYOR...";
-  TextEditingController adetController = TextEditingController();
-  String toplamAlis = "0.00 ₺", toplamSatis = "0.00 ₺";
-  bool veriAlindi = false;
+  String saat = "00:00:00", tarih = "Yükleniyor...", durumMetni = "BAĞLANILIYOR...";
+  int _saatTiklamaSayisi = 0; 
 
   @override
   void initState() {
     super.initState();
-    saatiBaslat();
+    seciliKategoriler = List.from(tumKategoriler);
+    for (var k in tumKategoriler) { manipuleOranlari[k] = 0.0; } // Varsayılan oran %0
     
-    _webController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (String url) {
-            _htmlKaynaginiCek(); 
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse('https://www.haremaltin.com'));
-
-    Timer.periodic(Duration(seconds: 2), (timer) {
-      _htmlKaynaginiCek();
-    });
+    saatiBaslat();
+    _startTicker();
+    _gizliWebViewBaslat();
   }
 
   void saatiBaslat() {
-    Timer.periodic(Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          saat = DateFormat('HH:mm:ss').format(DateTime.now());
-          tarih = DateFormat('d MMMM yyyy, EEEE', 'tr_TR').format(DateTime.now());
-        });
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) setState(() {
+        saat = DateFormat('HH:mm:ss').format(DateTime.now());
+        tarih = DateFormat('d MMMM yyyy, EEEE', 'tr_TR').format(DateTime.now());
+      });
+    });
+  }
+
+  void _startTicker() {
+    _tickerTimer = Timer.periodic(const Duration(milliseconds: 40), (timer) {
+      if (_scrollController.hasClients && altinListesi.isNotEmpty) {
+        double maxScroll = _scrollController.position.maxScrollExtent;
+        double currentScroll = _scrollController.position.pixels;
+        if (currentScroll >= maxScroll) { _scrollController.jumpTo(0.0); } 
+        else { _scrollController.jumpTo(currentScroll + 1.5); }
       }
     });
   }
 
-  void _htmlKaynaginiCek() async {
-    try {
-      String htmlContent = await _webController.runJavaScriptReturningResult("document.documentElement.innerHTML") as String;
-      htmlContent = htmlContent.replaceAll('\\u003C', '<').replaceAll('\\"', '"').replaceAll('\\n', '');
-      verileriIsle(htmlContent);
-    } catch (e) {
-      print("HTML Alma Hatası: $e");
-    }
+  void _gizliWebViewBaslat() {
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(NavigationDelegate(onPageFinished: (url) {
+        if (mounted) setState(() => durumMetni = "CANLI AKTİF 🟢");
+        _otomatikVeriCekmeyiBaslat();
+      }))
+      ..loadRequest(Uri.parse('https://www.haremaltin.com'));
   }
 
-  void verileriIsle(String html) {
+  void _otomatikVeriCekmeyiBaslat() {
+    _veriCekmeTimer = Timer.periodic(const Duration(seconds: 3), (timer) => _htmlYiAlVeIsle());
+  } 
+
+  Future<void> _htmlYiAlVeIsle() async {
     try {
-      var document = parse(html);
-      var rows = document.querySelectorAll('tr');
-      List<AltinModel> yeniListe = [];
+      final String html = await _webViewController.runJavaScriptReturningResult("document.getElementsByTagName('html')[0].outerHTML;") as String;
+      final temizHtml = html.replaceAll(RegExp(r'^"|"$'), '').replaceAll(r'\"', '"').replaceAll(r'\u003C', '<');
+      _sonCekilenHtml = temizHtml; 
+      _verileriAyikla(temizHtml);
+    } catch (e) { dev.log("Hata: $e"); }
+  }
 
-      for (var row in rows) {
-        var cells = row.querySelectorAll('td');
-        if (cells.length > 3) {
-          String hamIsim = cells[0].text.trim();
-          
-          // --- ÇİFT İSİM TEMİZLEME MANTIĞI (Örn: YENİ ATAYENİ ATA -> YENİ ATA) ---
-          String temizIsim = hamIsim;
-          int uzunluk = hamIsim.length;
-          if (uzunluk > 4 && uzunluk % 2 == 0) {
-            String ilkYari = hamIsim.substring(0, uzunluk ~/ 2).trim();
-            String ikinciYari = hamIsim.substring(uzunluk ~/ 2).trim();
-            if (ilkYari == ikinciYari) {
-              temizIsim = ilkYari;
-            }
-          }
+  // --- MERKEZİ MOTOR (VERİ AYIKLAMA, TEMİZLEME VE GİZLİ YÜZDE HESAPLAMA) ---
+  void _verileriAyikla(String html) {
+    if (html.isEmpty) return;
+    var document = parse(html);
+    var satirlar = document.querySelectorAll("tr");
+    List<AltinModel> yeniListe = [];
+    String bugunTarih = DateFormat("yyyy-MM-dd HH:mm:ss", "tr_TR").format(DateTime.now());
 
-          // FİLTRELEME MANTIĞI
-          bool gosterilsinMi = seciliKategoriler.any((kat) => temizIsim.toUpperCase().contains(kat));
-
-          if (gosterilsinMi) {
-            String alis = cells[1].text.trim();
-            String satis = cells[2].text.trim();
-            String farkRaw = cells[3].text.trim();
-            
-            String fark = farkRaw.split("%").last;
-            bool isDusus = farkRaw.contains("-");
-
-            if (temizIsim.contains("GRAM ALTIN")) {
-              guncelGramAlis = double.tryParse(alis.replaceAll(".", "").replaceAll(",", ".")) ?? 0.0;
-              guncelGramSatis = double.tryParse(satis.replaceAll(".", "").replaceAll(",", ".")) ?? 0.0;
-            }
-            yeniListe.add(AltinModel(isim: temizIsim, alis: alis, satis: satis, fark: "%$fark", dusus: isDusus));
+    for (var satir in satirlar) {
+      var hucreler = satir.querySelectorAll("td");
+      if (hucreler.length > 3) {
+        
+        // 1. KUSURSUZ İSİM TEMİZLİĞİ (Görsellerdeki \n, \N ve tekrarları yok eder)
+        String hamIsim = hucreler[0].text.toUpperCase();
+        // Literal \n, \N, ters slash ve normal boşlukları söküp atıyoruz:
+        hamIsim = hamIsim.replaceAll(r'\N', '').replaceAll(r'\n', '').replaceAll(r'\', '').replaceAll(RegExp(r'[\n\r\t]'), '');
+        hamIsim = hamIsim.replaceAll(RegExp(r'\s+'), ' ').trim(); // Fazla boşlukları tek boşluğa indir
+        
+        // İsim İkilemesini Önleme (HAS ALTINHAS ALTIN -> HAS ALTIN)
+        if (hamIsim.isNotEmpty && hamIsim.length % 2 == 0) {
+          int yari = hamIsim.length ~/ 2;
+          if (hamIsim.substring(0, yari) == hamIsim.substring(yari)) hamIsim = hamIsim.substring(0, yari);
+        }
+        
+        // Boşluklu İkilemeyi Önleme (GRAM ALTIN GRAM ALTIN -> GRAM ALTIN)
+        List<String> kelimeler = hamIsim.split(" ");
+        if (kelimeler.length >= 2 && kelimeler.length % 2 == 0) {
+          int yari = kelimeler.length ~/ 2;
+          if (kelimeler.sublist(0, yari).join(" ") == kelimeler.sublist(yari).join(" ")) {
+            hamIsim = kelimeler.sublist(0, yari).join(" ");
           }
         }
-      }
+        hamIsim = hamIsim.trim(); // Tertemiz "HAS ALTIN" elde edildi.
 
-      if (mounted && yeniListe.isNotEmpty) {
-        setState(() {
-          altinListesi = yeniListe;
-          durumMetni = "CANLI 🟢";
-          veriAlindi = true;
-        });
-        if (adetController.text.isNotEmpty) hesapla(adetController.text);
+        // 2. RAKAMLARI AL
+        String hamAlisTxt = hucreler[1].text.replaceAll(RegExp(r'[\n\r\t]'), '').trim();
+        String hamSatisTxt = hucreler[2].text.replaceAll(RegExp(r'[\n\r\t]'), '').trim();
+        String farkOrani = hucreler[3].text.replaceAll(RegExp(r'[\n\r\t]'), '').trim();
+
+        double hamAlis = double.tryParse(hamAlisTxt.replaceAll(".", "").replaceAll(",", ".")) ?? 0.0;
+        double hamSatis = double.tryParse(hamSatisTxt.replaceAll(".", "").replaceAll(",", ".")) ?? 0.0;
+
+        // 3. GİZLİ PANEL YÜZDE MÜDAHALESİ (Anında Etki Eder)
+        double manipuleYuzdesi = manipuleOranlari[hamIsim] ?? 0.0;
+        if (manipuleYuzdesi != 0.0) {
+          // Örn: hamAlis 5000, Yüzde 100 ise -> 5000 + (5000 * 100/100) = 10000.
+          hamAlis = hamAlis + (hamAlis * (manipuleYuzdesi / 100));
+          hamSatis = hamSatis + (hamSatis * (manipuleYuzdesi / 100));
+        }
+
+        // 4. EKRAN FORMATINA ÇEVİR
+        String sonAlis = NumberFormat.currency(locale: 'tr_TR', symbol: '').format(hamAlis).trim();
+        String sonSatis = NumberFormat.currency(locale: 'tr_TR', symbol: '').format(hamSatis).trim();
+        bool isDusus = farkOrani.contains("-");
+
+        // FİREBASE KAYIT
+        String temizDugumIsmi = hamIsim.replaceAll(RegExp(r'[.$#\[\]]'), "_").trim();
+        _dbGecmis.child(temizDugumIsmi).child(bugunTarih).set({ "alis": sonAlis, "satis": sonSatis, "fiyat": hamSatis, "oran": farkOrani });
+        _dbCanli.child(temizDugumIsmi).set({ "Buying": sonAlis, "Selling": sonSatis, "Change": farkOrani, "Status": isDusus ? "down" : "up" });
+
+        // ÇEVİRİCİ İÇİN KÜRESEL DEĞİŞKENLERİ GÜNCELLE
+        if (hamIsim == "GRAM ALTIN") { guncelGramAlis = hamAlis; guncelGramSatis = hamSatis; }
+
+        // FİLTREYE UYUYORSA LİSTEYE EKLE
+        if (seciliKategoriler.contains(hamIsim)) {
+          yeniListe.add(AltinModel(isim: hamIsim, alis: sonAlis, satis: sonSatis, fark: farkOrani, dusus: isDusus));
+        }
       }
-    } catch (e) {
-      print("Veri İşleme Hatası: $e");
     }
+    if (mounted && yeniListe.isNotEmpty) setState(() => altinListesi = yeniListe);
   }
 
-  void hesapla(String deger) {
-    double adet = double.tryParse(deger) ?? 0.0;
-    final format = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
-    setState(() {
-      toplamAlis = format.format(adet * guncelGramAlis);
-      toplamSatis = format.format(adet * guncelGramSatis);
-    });
-  }
-
-  // --- FİLTRELEME POPUP ---
-  void showFiltrePopup() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text("GÖRÜNTÜLEME AYARI", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 16, fontWeight: FontWeight.bold)),
-              content: Container(
-                width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: tumKategoriler.length,
-                  itemBuilder: (context, index) {
-                    final kat = tumKategoriler[index];
-                    return CheckboxListTile(
-                      activeColor: Color(0xFFD4AF37),
-                      title: Text(kat, style: TextStyle(fontSize: 14)),
-                      value: seciliKategoriler.contains(kat),
-                      onChanged: (bool? value) {
-                        setStateDialog(() {
-                          if (value == true) {
-                            seciliKategoriler.add(kat);
-                          } else {
-                            seciliKategoriler.remove(kat);
-                          }
-                        });
-                        setState(() {}); // Ana ekranı güncelle
-                      },
-                    );
-                  },
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text("TAMAM", style: TextStyle(color: Color(0xFF333333), fontWeight: FontWeight.bold)),
-                )
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // --- POPUP FONKSİYONLARI ---
-  void showBizKimizPopup() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          elevation: 10,
-          backgroundColor: Colors.white,
-          child: Padding(
-            padding: EdgeInsets.all(12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  height: 200, width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Color(0xFFD4AF37), width: 2),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.asset("assets/dukkan.jpg", fit: BoxFit.cover,
-                      errorBuilder: (c, o, s) => Container(color: Colors.grey[300], child: Icon(Icons.store, size: 50, color: Colors.grey))),
-                  ),
-                ),
-                SizedBox(height: 20),
-                Text("Kardeşler Kuyumcusu", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 22, fontWeight: FontWeight.bold)),
-                Container(width: 60, height: 3, color: Color(0xFFD4AF37), margin: EdgeInsets.symmetric(vertical: 12)),
-                Text(
-                  "Kardeşler Kuyumculuk olarak yılların verdiği tecrübe ve güvenle siz değerli müşterilerimize en kaliteli hizmeti sunmaktayız.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF555555), fontSize: 16, height: 1.5),
-                ),
-                SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF333333),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                    child: Text("ANLADIM", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void showZekatPopup() {
-    double zekatSonuc = 0.0;
-    TextEditingController zekatController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStatePopup) {
-            return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-              elevation: 15,
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text("ZEKAT HESAPLAMA", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 20, fontWeight: FontWeight.bold)),
-                    Text("(80.18 gr. üzeri altınlar için geçerlidir)", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                    SizedBox(height: 20),
-                    TextField(
-                      controller: zekatController,
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        hintText: "Toplam Altın Miktarı (Gram)",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        contentPadding: EdgeInsets.all(12),
-                      ),
-                      onChanged: (val) {
-                        double gram = double.tryParse(val) ?? 0.0;
-                        setStatePopup(() {
-                          zekatSonuc = (gram * guncelGramSatis) / 40.0;
-                        });
-                      },
-                    ),
-                    Divider(height: 30),
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(15),
-                      decoration: BoxDecoration(color: Color(0xFFFFF9C4), borderRadius: BorderRadius.circular(8)),
-                      child: Column(
-                        children: [
-                          Text("ÖDENMESİ GEREKEN ZEKAT", style: TextStyle(fontSize: 12, color: Color(0xFF333333))),
-                          Text(
-                            NumberFormat.currency(locale: 'tr_TR', symbol: '₺').format(zekatSonuc),
-                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFD32F2F)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 15),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF333333),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: Text("KAPAT", style: TextStyle(color: Colors.white)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+  @override
+  void dispose() {
+    _veriCekmeTimer?.cancel();
+    _tickerTimer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _launchURL(String url) async {
     final uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      print("Link açılamadı: $url");
-    }
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) { dev.log("Bağlantı Hatası: $url"); }
+  }
+// --- GİZLİ PANEL ŞİFRE EKRANI ---
+  void showSifrePopup() {
+    TextEditingController sifreController = TextEditingController();
+    showDialog(context: context, builder: (context) => AlertDialog(
+      backgroundColor: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.red, width: 2)),
+      title: const Row(children: [Icon(Icons.security, color: Colors.red), SizedBox(width: 10), Text("YETKİLİ GİRİŞİ", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16))]),
+      content: TextField(
+        controller: sifreController, obscureText: true,
+        decoration: const InputDecoration(hintText: "Şifrenizi girin", border: OutlineInputBorder()),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text("İPTAL", style: TextStyle(color: Colors.grey))),
+        TextButton(
+          onPressed: () {
+            if (sifreController.text == "kardesler123") {
+              Navigator.pop(context); // Şifre kutusunu kapat
+              showGizliPanel();       // Asıl paneli aç
+            } else {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Hatalı Şifre!"), backgroundColor: Colors.red));
+            }
+          },
+          child: const Text("GİRİŞ", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
+        )
+      ],
+    ));
+  }
+  // --- GİZLİ YÖNETİM PANELİ (Saate 5 Kere Tıklayınca Açılır) ---
+  void showGizliPanel() {
+    showDialog(context: context, builder: (context) => StatefulBuilder(builder: (context, setStatePanel) => AlertDialog(
+      backgroundColor: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Colors.red, width: 2)),
+      title: const Text("GİZLİ MÜDAHALE PANELİ", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
+      content: SizedBox(width: double.maxFinite, child: ListView.builder(shrinkWrap: true, itemCount: tumKategoriler.length, itemBuilder: (context, index) {
+        String kat = tumKategoriler[index];
+        return Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Row(children: [
+          Expanded(child: Text(kat, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+          SizedBox(width: 80, child: TextField(
+            keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
+            textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+            decoration: InputDecoration(hintText: manipuleOranlari[kat]?.toString() ?? "0.0", suffixText: "%", border: const OutlineInputBorder()),
+            onChanged: (val) { 
+              double oran = double.tryParse(val.replaceAll(",", ".")) ?? 0.0; 
+              manipuleOranlari[kat] = oran; 
+            },
+          )),
+        ]));
+      })),
+      actions: [
+        TextButton(
+          onPressed: () { 
+            Navigator.pop(context); 
+            // 3 saniye beklemeden ANINDA ekrana yansıt:
+            if (_sonCekilenHtml.isNotEmpty) _verileriAyikla(_sonCekilenHtml);
+          }, 
+          child: const Text("UYGULA VE ÇIK", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
+        )
+      ],
+    )));
   }
 
-  @override
+  // --- DİĞER POPUPLAR ---
+  void showGramHesaplaPopup() {
+    double adet = 0;
+    showDialog(context: context, builder: (context) => StatefulBuilder(builder: (context, setStatePopup) => AlertDialog(
+      backgroundColor: Theme.of(context).cardColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: Color(0xFFD4AF37), width: 1)),
+      title: const Text("HIZLI GRAM HESAPLA", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 16, fontWeight: FontWeight.bold)),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(keyboardType: TextInputType.number, textAlign: TextAlign.center, decoration: const InputDecoration(hintText: "Gram Miktarı Girin", border: InputBorder.none),
+          onChanged: (val) => setStatePopup(() => adet = double.tryParse(val.replaceAll(",", ".")) ?? 0)),
+        const Divider(),
+        _hesapSatir("ALIŞ:", NumberFormat.currency(locale: 'tr_TR', symbol: '₺').format(adet * guncelGramAlis)),
+        const SizedBox(height: 10),
+        _hesapSatir("SATIŞ:", NumberFormat.currency(locale: 'tr_TR', symbol: '₺').format(adet * guncelGramSatis), gold: true),
+      ]),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("KAPAT"))],
+    )));
+  }
+
+  Widget _hesapSatir(String label, String value, {bool gold = false}) {
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+      Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: gold ? const Color(0xFFD4AF37) : null)),
+    ]);
+  }
+
+  void showBizKimizPopup() {
+    showDialog(context: context, builder: (context) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)), backgroundColor: Theme.of(context).cardColor,
+      child: Padding(padding: const EdgeInsets.all(15), child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(height: 200, width: double.infinity, decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFD4AF37), width: 2)),
+          child: ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.asset("assets/dukkan.jpg", fit: BoxFit.cover, errorBuilder: (c, o, s) => Container(color: Colors.grey[900]))),
+        ),
+        const SizedBox(height: 20),
+        const Text("Kardeşler Kuyumculuk", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 22, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        Text("Yılların verdiği tecrübe ve güvenle siz değerli müşterilerimize en kaliteli hizmeti sunmaktayız.", textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87, fontSize: 15, height: 1.5)),
+        const SizedBox(height: 20),
+        SizedBox(width: double.infinity, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD4AF37)), onPressed: () => Navigator.pop(context), child: const Text("ANLADIM", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
+      ])),
+    ));
+  }
+
+  void showZekatPopup() {
+    double zekatSonuc = 0.0;
+    showDialog(context: context, builder: (context) => StatefulBuilder(builder: (context, setStatePopup) => AlertDialog(
+      backgroundColor: Theme.of(context).cardColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: const Color(0xFFD4AF37).withOpacity(0.5))),
+      title: const Text("ZEKAT HESAPLA", style: TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold)),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text("(80.18 gr. üzeri altınlar için)", style: TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 15),
+        TextField(keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(hintText: "Toplam Gram"),
+          onChanged: (val) { double gram = double.tryParse(val.replaceAll(",", ".")) ?? 0.0; setStatePopup(() => zekatSonuc = (gram * guncelGramSatis) / 40.0); }),
+        const SizedBox(height: 20),
+        Text(NumberFormat.currency(locale: 'tr_TR', symbol: '₺').format(zekatSonuc), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.red)),
+      ]),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("KAPAT"))],
+    )));
+  }
+
+  void showFiltrePopup() {
+    showDialog(context: context, builder: (context) => StatefulBuilder(builder: (context, setStateDialog) => AlertDialog(
+      backgroundColor: Theme.of(context).cardColor,
+      title: const Text("GÖRÜNTÜLEME AYARI", style: TextStyle(color: Color(0xFFD4AF37), fontSize: 16, fontWeight: FontWeight.bold)),
+      content: SizedBox(width: double.maxFinite, child: ListView(shrinkWrap: true, children: tumKategoriler.map((k) => CheckboxListTile(
+        activeColor: const Color(0xFFD4AF37), title: Text(k, style: const TextStyle(fontSize: 13)), value: seciliKategoriler.contains(k),
+        onChanged: (v) => setStateDialog(() { v! ? seciliKategoriler.add(k) : seciliKategoriler.remove(k); setState(() {}); }),
+      )).toList())),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("TAMAM"))],
+    )));
+  }
+
+ @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: Color(0xFFF5F5F5),
-      drawer: yanMenu(),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              ustPanel(),
-              ceviriciKart(),
-              // BUTON VE FİLTRE SATIRI (Daraltılmış ve ikon eklenmiş hali)
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 5,
-                      child: Container(
-                        height: 40,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: veriAlindi ? Colors.green : Color(0xFF333333),
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
-                          ),
-                          onPressed: () => _webController.reload(),
-                          child: Text(durumMetni, style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      flex: 1,
-                      child: Container(
-                        height: 40,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFFD4AF37),
-                            elevation: 2,
-                            padding: EdgeInsets.zero,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
-                          ),
-                          onPressed: showFiltrePopup,
-                          child: Icon(Icons.filter_list, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              baslikSatiri(),
-              Expanded(child: altinListView()),
-            ],
-          ),
-          SizedBox(
-            height: 1, 
-            width: 1,
-            child: WebViewWidget(controller: _webController),
-          ),
-        ],
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(key: _scaffoldKey, drawer: yanMenu(isDark), body: Column(children: [
+      ustPanel(isDark),
+      // --- KAYAR BANT (TICKER) YÜKSELİŞ/DÜŞÜŞ RENK KORUMALI ---
+      if (altinListesi.isNotEmpty) Container(height: 35, width: double.infinity, decoration: BoxDecoration(color: isDark ? const Color(0xFF16161A) : Colors.white, border: Border.symmetric(horizontal: BorderSide(color: isDark ? Colors.white10 : Colors.black12))),
+        child: ListView.builder(controller: _scrollController, scrollDirection: Axis.horizontal, itemCount: altinListesi.length, itemBuilder: (context, index) {
+          final item = altinListesi[index];
+          return Padding(padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8), child: Row(children: [
+            Text(item.isim, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.black87)),
+            const SizedBox(width: 5),
+            Text(item.satis, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: item.dusus ? Colors.red : Colors.green)),
+          ]));
+        }),
       ),
-    );
-  }
-
-  Widget ustPanel() {
-    return Container(
-      padding: EdgeInsets.only(top: 50, bottom: 20, left: 20, right: 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Color(0xFFD4AF37), Color(0xFFC59D25)]),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(icon: Icon(Icons.menu, color: Colors.white), onPressed: () => _scaffoldKey.currentState?.openDrawer()),
-              Text("KARDEŞLER KUYUMCUSU", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              SizedBox(width: 48),
-            ],
-          ),
-          Text(saat, style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
-          Text(tarih, style: TextStyle(color: Colors.white70, fontSize: 14)),
-        ],
-      ),
-    );
-  }
-
-  Widget ceviriciKart() {
-    return Padding(
-      padding: EdgeInsets.all(16),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 4,
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Text("ALTIN ÇEVİRİCİ (Gram Altın)", style: TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold)),
-              TextField(
-                controller: adetController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(hintText: "Adet Giriniz (Örn: 10)"),
-                onChanged: hesapla,
-              ),
-              Divider(),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(children: [Text("TOPLAM ALIŞ", style: TextStyle(fontSize: 10)), Text(toplamAlis, style: TextStyle(fontWeight: FontWeight.bold))]),
-                  Column(children: [Text("TOPLAM SATIŞ", style: TextStyle(fontSize: 10)), Text(toplamSatis, style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD4AF37)))]),
-                ],
-              )
-            ],
-          ),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), child: Row(children: [
+        Text("PİYASA DURUMU", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: isDark ? Colors.white30 : Colors.black26, letterSpacing: 1.5)),
+        const Spacer(),
+        IconButton(icon: const Icon(Icons.filter_list, color: Color(0xFFD4AF37), size: 22), onPressed: showFiltrePopup),
+        GestureDetector(onTap: () { setState(() => durumMetni = "YENİLENİYOR..."); _webViewController.reload(); }, child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.green)), child: Text(durumMetni, style: const TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)))),
+      ])),
+      // --- LİSTE BAŞLIKLARI ---
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 5),
+        child: Row(
+          children: [
+            Expanded(flex: 2, child: Text("CİNSİ", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isDark ? Colors.white54 : Colors.black54))),
+            Expanded(child: Text("ALIŞ", textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isDark ? Colors.white54 : Colors.black54))),
+            Expanded(child: Text("SATIŞ", textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isDark ? Colors.white54 : Colors.black54))),
+            const SizedBox(width: 25),
+            SizedBox(width: 50, child: Text("FARK", textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isDark ? Colors.white54 : Colors.black54))),
+          ],
         ),
       ),
-    );
+      Expanded(child: ListView.builder(itemCount: altinListesi.length, padding: const EdgeInsets.symmetric(horizontal: 15), itemBuilder: (context, index) {
+        final item = altinListesi[index];
+        
+        // --- \n GİBİ ÇÖP KARAKTERLERİ YOK EDEN FİLTRE ---
+        String temizFark = item.fark.replaceAll(RegExp(r'[^0-9.,%\-+]'), '');
+
+        return Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(20), decoration: BoxDecoration(
+          color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: item.dusus ? Colors.red.withOpacity(0.3) : Colors.green.withOpacity(0.3), width: 1),
+          boxShadow: [BoxShadow(color: item.dusus ? Colors.red.withOpacity(0.05) : Colors.green.withOpacity(0.05), blurRadius: 10)],
+        ), child: Row(children: [
+          Expanded(flex: 2, child: Text(item.isim, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13))),
+          Expanded(child: Text(item.alis, textAlign: TextAlign.center, style: TextStyle(color: item.dusus ? Colors.red : Colors.green, fontSize: 13, fontWeight: FontWeight.bold))),
+          Expanded(child: Text(item.satis, textAlign: TextAlign.right, style: TextStyle(color: item.dusus ? Colors.red : Colors.green, fontWeight: FontWeight.w900, fontSize: 14))),
+          const SizedBox(width: 15),
+          // YÜZDELİK FARK VE İKON KISMI
+          SizedBox(
+            width: 50,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(temizFark, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: item.dusus ? Colors.red : Colors.green)),
+                const SizedBox(height: 2),
+                Icon(item.dusus ? Icons.trending_down : Icons.trending_up, color: item.dusus ? Colors.red : Colors.green, size: 14),
+              ],
+            ),
+          ),
+        ]));
+      })),
+    ]));
   }
 
-  Widget baslikSatiri() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Row(children: [
-        Expanded(flex: 2, child: Text("CİNSİ", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-        Expanded(child: Text("ALIŞ", textAlign: TextAlign.end, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-        Expanded(child: Text("SATIŞ", textAlign: TextAlign.end, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-        Expanded(child: Text("FARK", textAlign: TextAlign.end, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
+ Widget ustPanel(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.only(top: 60, bottom: 30, left: 15, right: 15),
+      decoration: BoxDecoration(
+        // 1. PREMIUM ARKA PLAN GRADYANI (Mermer Beyazı / Obsidyen Siyahı)
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark 
+              ? [const Color(0xFF1A1A20), const Color(0xFF0A0A0D)] // Gece: Antrasit & Siyah
+              : [const Color(0xFFFFFFFF), const Color(0xFFF4F4F9)], // Gündüz: İnci Beyazı
+        ),
+        // 2. İNCE ALTIN ÇİZGİ VE YUVARLAK HATLAR
+        border: Border(bottom: BorderSide(color: const Color(0xFFD4AF37).withOpacity(0.4), width: 1.5)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
+        // 3. SİNEMATİK GÖLGE EFEKTİ (Gece modunda hafif altın ışıltısı yayar)
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? const Color(0xFFD4AF37).withOpacity(0.08) : Colors.black.withOpacity(0.08), 
+            blurRadius: 30, 
+            offset: const Offset(0, 15)
+          )
+        ]
+      ),
+      child: Column(children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          IconButton(icon: Icon(Icons.notes_rounded, color: isDark ? Colors.white : Colors.black, size: 28), onPressed: () => _scaffoldKey.currentState?.openDrawer()),
+          
+          // 4. LÜKS MARKA YAZISI (Geniş Harf Aralığı ve Hafif Işıltı)
+          Text(
+            "KARDEŞLER KUYUMCULUK", 
+            style: TextStyle(
+              fontWeight: FontWeight.w900, 
+              fontSize: 15, 
+              letterSpacing: 3.5, // Daha lüks bir görünüm için harf arası açıldı
+              color: isDark ? Colors.white : const Color(0xFF111115),
+              shadows: [Shadow(color: const Color(0xFFD4AF37).withOpacity(0.5), blurRadius: 15)] // Altın Parlaması
+            )
+          ),
+          
+          IconButton(icon: Icon(isDark ? Icons.wb_sunny_outlined : Icons.nightlight_round, color: const Color(0xFFD4AF37)), onPressed: widget.toggleTheme),
+        ]),
+        
+        const SizedBox(height: 25),
+        
+        // 5. GÖLGELİ VE MODERN SAAT TYPOGRAPHY'Sİ
+        GestureDetector(
+          onTap: () { _saatTiklamaSayisi++; if (_saatTiklamaSayisi >= 5) { _saatTiklamaSayisi = 0; showSifrePopup(); } },
+          child: Text(
+            saat, 
+            style: TextStyle(
+              fontSize: 52, 
+              fontWeight: FontWeight.w200, 
+              letterSpacing: 2.5,
+              color: isDark ? Colors.white : const Color(0xFF111115),
+              shadows: [Shadow(color: isDark ? Colors.white24 : Colors.black12, offset: const Offset(0, 6), blurRadius: 20)]
+            )
+          ),
+        ),
+        
+        const SizedBox(height: 12),
+        
+        // 6. ALTIN KAPSÜL İÇİNDE TARİH GÖSTERİMİ
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFD4AF37).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.3)),
+          ),
+          child: Text(
+            tarih.toUpperCase(), 
+            style: const TextStyle(
+              color: Color(0xFFD4AF37), 
+              fontSize: 11, 
+              fontWeight: FontWeight.w800, 
+              letterSpacing: 2.5
+            )
+          ),
+        ),
       ]),
     );
   }
 
-  Widget altinListView() {
-    return ListView.builder(
-      itemCount: altinListesi.length,
-      padding: EdgeInsets.zero,
-      itemBuilder: (context, index) {
-        final item = altinListesi[index];
-        return Card(
-          margin: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: EdgeInsets.all(14),
-            child: Row(children: [
-              Expanded(flex: 2, child: Text(item.isim, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold))),
-              Expanded(child: Text(item.alis, textAlign: TextAlign.end, style: TextStyle(fontSize: 13))),
-              Expanded(child: Text(item.satis, textAlign: TextAlign.end, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold))),
-              Expanded(child: Text(item.fark, textAlign: TextAlign.end, style: TextStyle(fontSize: 11, color: item.dusus ? Colors.red : Colors.green, fontWeight: FontWeight.bold))),
-            ]),
-          ),
-        );
-      },
-    );
+  Widget yanMenu(bool isDark) {
+    return Drawer(backgroundColor: Theme.of(context).scaffoldBackgroundColor, child: Column(children: [
+      Container(height: 220, width: double.infinity, padding: const EdgeInsets.all(15), decoration: const BoxDecoration(color: Color(0xFF0A0A0D)), child: ClipRRect(borderRadius: BorderRadius.circular(15), child: Image.asset("assets/dukkan.jpg", fit: BoxFit.cover, errorBuilder: (c, o, s) => const Center(child: Icon(Icons.diamond, color: Color(0xFFD4AF37), size: 60))))),
+      _menuLink("HIZLI GRAM HESAPLA", Icons.calculate_outlined, () { Navigator.pop(context); showGramHesaplaPopup(); }, gold: true),
+      _menuLink("BİZ KİMİZ?", Icons.info_outline, () { Navigator.pop(context); showBizKimizPopup(); }),
+      _menuLink("DÜKKAN KONUMU", Icons.location_on_outlined, () => _launchURL("geo:0,0?q=Kardeşler+Kuyumculuk+Ereğli")),
+      _menuLink("İŞ YERİ TELEFONU", Icons.phone_in_talk_outlined, () => _launchURL("tel:+903723238888")),
+      _menuLink("WHATSAPP DESTEK", Icons.chat_bubble_outline, () => _launchURL("https://wa.me/905000000000")),
+      _menuLink("ZEKAT HESAPLA", Icons.monetization_on_outlined, () { Navigator.pop(context); showZekatPopup(); }),
+      const Spacer(),
+      Padding(padding: const EdgeInsets.all(20), child: Text("v7.0 Ultimate Premium", style: TextStyle(color: isDark ? Colors.white10 : Colors.black12, fontSize: 10))),
+    ]));
   }
 
-  Widget yanMenu() {
-    return Drawer(
-      child: Column(
-        children: [
-          Container(
-            height: 200, width: double.infinity, color: Color(0xFFD4AF37),
-            padding: EdgeInsets.all(10),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.white, width: 2),
-                image: DecorationImage(image: AssetImage("assets/dukkan.jpg"), fit: BoxFit.cover)
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _menuButton("BİZ KİMİZ?", Color(0xFFD4AF37), () => showBizKimizPopup()),
-                  SizedBox(height: 10),
-                  _menuButton("DÜKKAN KONUMU", Color(0xFF333333), () {
-                    final adres = Uri.encodeComponent("KUYUMCULAR KDZ EREĞLİ, UN PAZARI SOK. No: 8 KDZ, 67300 Ereğli/Zonguldak");
-                    _launchURL("geo:0,0?q=$adres");
-                  }),
-                  SizedBox(height: 10),
-                  _menuButton("İŞ YERİ TELEFONU", Color(0xFF333333), () => _launchURL("tel:+903723238888")),
-                  SizedBox(height: 10),
-                  _menuButton("WHATSAPP DESTEK", Color(0xFF25D366), () => _launchURL("https://api.whatsapp.com/send?phone=905000000000&text=Merhaba bilgi almak istiyorum.")),
-                  SizedBox(height: 10),
-                  _menuButton("ZEKAT HESAPLA", Color(0xFFD4AF37), () => showZekatPopup()),
-                ],
-              ),
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _menuButton(String text, Color color, VoidCallback onTap) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        onPressed: onTap,
-        child: Text(text, style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
-    );
+  Widget _menuLink(String t, IconData i, VoidCallback o, {bool gold = false}) {
+    return ListTile(leading: Icon(i, color: gold ? const Color(0xFFD4AF37) : (Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black45)), title: Text(t, style: TextStyle(fontWeight: gold ? FontWeight.w900 : FontWeight.w600, fontSize: 13, color: gold ? const Color(0xFFD4AF37) : null)), onTap: o);
   }
 }

@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "626207190484",
+    "firebase_url": "https://kardeslerkuyumcusu-f8428-default-rtdb.firebaseio.com",
+    "project_id": "kardeslerkuyumcusu-f8428",
+    "storage_bucket": "kardeslerkuyumcusu-f8428.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:626207190484:android:f612d2f0dd2176691d3a41",
+        "android_client_info": {
+          "package_name": "com.yourname.kardeslerkuyumcusu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDiF13eBZ_my6FAsSYmPsGJSJxFaK6U-SM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

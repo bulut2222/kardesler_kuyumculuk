@@ -1,12 +1,14 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
 }
 
 android {
-    namespace = "com.example.kardesler_kuyumculuk"
+    // Firebase Console'daki Paket Adı ile birebir eşlendi
+    namespace = "com.yourname.kardeslerkuyumcusu" 
+
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,20 +22,21 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.kardesler_kuyumculuk"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Firebase ve JSON dosyandaki paket adı
+        applicationId = "com.yourname.kardeslerkuyumcusu" 
+        
+        // Firebase için en güvenli minimum SDK versiyonu
+        minSdk = flutter.minSdkVersion 
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Büyük kütüphaneler için MultiDex desteği
+        multiDexEnabled = true
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -42,3 +45,6 @@ android {
 flutter {
     source = "../.."
 }
+
+// Firebase plugin tetikleyicisi
+apply(plugin = "com.google.gms.google-services")
